@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>筛选排序交互原型 - 电商管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            padding-bottom: 60px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 顶部搜索栏 */
+        .header-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            z-index: 100;
+        }
+
+        .search-box {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 36px;
+            padding: 0 35px 0 35px;
+            border: 1px solid #e0e0e0;
+            border-radius: 18px;
+            font-size: 14px;
+            background: #f8f8f8;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+
+        .clear-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            cursor: pointer;
+            display: none;
+        }
+
+        .search-input:not(:placeholder-shown) + .search-icon + .clear-icon {
+            display: block;
+        }
+
+        /* 排序和筛选按钮 */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .sort-btn, .filter-btn {
+            position: relative;
+            padding: 8px 12px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .filter-btn.active {
+            color: #007AFF;
+            border-color: #007AFF;
+        }
+
+        .filter-badge {
+            display: none;
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #FF3B30;
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 5px;
+            border-radius: 10px;
+            min-width: 16px;
+            text-align: center;
+        }
+
+        .filter-badge.show {
+            display: block;
+        }
+
+        /* 排序下拉菜单 */
+        .sort-dropdown {
+            position: absolute;
+            top: 60px;
+            right: 95px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 101;
+            display: none;
+            min-width: 140px;
+        }
+
+        .sort-dropdown.show {
+            display: block;
+        }
+
+        .sort-option {
+            padding: 12px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sort-option:not(:last-child) {
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .sort-option:hover {
+            background: #f8f8f8;
+        }
+
+        .sort-option.active {
+            color: #007AFF;
+        }
+
+        .sort-icon {
+            color: #007AFF;
+            display: none;
+        }
+
+        .sort-option.active .sort-icon {
+            display: block;
+        }
+
+        /* 遮罩层 */
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 200;
+        }
+
+        .overlay.show {
+            display: block;
+        }
+
+        /* 筛选面板 */
+        .filter-panel {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: -100%;
+            background: #fff;
+            z-index: 201;
+            transition: bottom 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh;
+        }
+
+        .filter-panel.show {
+            bottom: 0;
+        }
+
+        .filter-header {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .filter-title {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .filter-count {
+            font-size: 14px;
+            color: #007AFF;
+        }
+
+        .filter-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* 左侧导航 */
+        .filter-nav {
+            width: 100px;
+            background: #f8f8f8;
+            overflow-y: auto;
+        }
+
+        .filter-nav-item {
+            padding: 15px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            position: relative;
+        }
+
+        .filter-nav-item.active {
+            background: #fff;
+            border-left-color: #007AFF;
+            color: #007AFF;
+        }
+
+        .filter-nav-badge {
+            position: absolute;
+            top: 12px;
+            right: 8px;
+            width: 6px;
+            height: 6px;
+            background: #FF3B30;
+            border-radius: 50%;
+            display: none;
+        }
+
+        .filter-nav-item.has-selection .filter-nav-badge {
+            display: block;
+        }
+
+        /* 右侧筛选项 */
+        .filter-options {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .filter-section {
+            display: none;
+        }
+
+        .filter-section.active {
+            display: block;
+        }
+
+        .filter-section-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        /* 标签选择器 */
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .tag-item {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .tag-item.selected {
+            background: #E8F4FF;
+            color: #007AFF;
+            border-color: #007AFF;
+        }
+
+        /* 时间选择器 */
+        .time-range {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .time-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .time-separator {
+            color: #999;
+        }
+
+        /* 品牌特殊样式 */
+        .brand-section {
+            margin-bottom: 20px;
+        }
+
+        .brand-label {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .all-brands-link {
+            display: inline-block;
+            margin-top: 12px;
+            color: #007AFF;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        /* 成员选择器 */
+        .member-search {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .member-search-input {
+            width: 100%;
+            padding: 10px 35px 10px 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .member-search-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+
+        .member-group {
+            margin-bottom: 20px;
+        }
+
+        .member-group-title {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .member-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .member-item {
+            padding: 10px;
+            background: #f8f8f8;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .member-item.selected {
+            background: #E8F4FF;
+            color: #007AFF;
+        }
+
+        .member-check {
+            color: #007AFF;
+            display: none;
+        }
+
+        .member-item.selected .member-check {
+            display: block;
+        }
+
+        /* 底部按钮 */
+        .filter-footer {
+            padding: 10px 15px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            background: #fff;
+        }
+
+        .reset-btn, .confirm-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .reset-btn {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .confirm-btn {
+            background: #007AFF;
+            color: #fff;
+        }
+
+        /* 列表区域 */
+        .content-area {
+            margin-top: 60px;
+            padding: 15px;
+        }
+
+        .list-item {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* 二级页面 */
+        .sub-page {
+            position: fixed;
+            top: 0;
+            left: 100%;
+            right: -100%;
+            bottom: 0;
+            background: #fff;
+            z-index: 202;
+            transition: left 0.3s ease, right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sub-page.show {
+            left: 0;
+            right: 0;
+        }
+
+        .sub-header {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .back-btn {
+            cursor: pointer;
+            color: #007AFF;
+        }
+
+        .sub-title {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .sub-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        /* 已选标签 */
+        .selected-tags {
+            display: none;
+            padding: 10px 15px;
+            background: #f8f8f8;
+            border-bottom: 1px solid #e0e0e0;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .selected-tags.show {
+            display: flex;
+        }
+
+        .selected-tag {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            background: #E8F4FF;
+            color: #007AFF;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .selected-tag-close {
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* 单选按钮 */
+        .radio-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .radio-item {
+            padding: 12px;
+            background: #f8f8f8;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .radio-item.selected {
+            background: #E8F4FF;
+            color: #007AFF;
+        }
+
+        .radio-circle {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #ddd;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .radio-item.selected .radio-circle {
+            border-color: #007AFF;
+        }
+
+        .radio-circle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background: #007AFF;
+            border-radius: 50%;
+            display: none;
+        }
+
+        .radio-item.selected .radio-circle::after {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部搜索栏 -->
+    <div class="header-bar">
+        <div class="search-box">
+            <input type="text" class="search-input" placeholder="搜索关键词">
+            <span class="search-icon">🔍</span>
+            <span class="clear-icon" onclick="clearSearch()">✕</span>
+        </div>
+        <div class="action-buttons">
+            <button class="sort-btn" onclick="toggleSort()">
+                <span>排序</span>
+                <span>▼</span>
+            </button>
+            <button class="filter-btn" id="filterBtn" onclick="openFilter()">
+                <span>筛选</span>
+                <span>☰</span>
+                <span class="filter-badge" id="filterBadge">0</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 排序下拉菜单 -->
+    <div class="sort-dropdown" id="sortDropdown">
+        <div class="sort-option active" onclick="selectSort(this, 'time-desc')">
+            <span>时间从新到旧</span>
+            <span class="sort-icon">✓</span>
+        </div>
+        <div class="sort-option" onclick="selectSort(this, 'time-asc')">
+            <span>时间从旧到新</span>
+            <span class="sort-icon">✓</span>
+        </div>
+        <div class="sort-option" onclick="selectSort(this, 'price-desc')">
+            <span>价格从高到低</span>
+            <span class="sort-icon">✓</span>
+        </div>
+        <div class="sort-option" onclick="selectSort(this, 'price-asc')">
+            <span>价格从低到高</span>
+            <span class="sort-icon">✓</span>
+        </div>
+    </div>
+
+    <!-- 遮罩层 -->
+    <div class="overlay" id="overlay" onclick="closeAll()"></div>
+
+    <!-- 筛选面板 -->
+    <div class="filter-panel" id="filterPanel">
+        <div class="filter-header">
+            <div class="filter-title">筛选</div>
+            <div class="filter-count" id="filterCount">已选 0 项</div>
+        </div>
+
+        <div class="selected-tags" id="selectedTags"></div>
+
+        <div class="filter-content">
+            <!-- 左侧导航 -->
+            <div class="filter-nav">
+                <div class="filter-nav-item active" data-filter="brand" onclick="switchFilter(this)">
+                    品牌
+                    <span class="filter-nav-badge"></span>
+                </div>
+                <div class="filter-nav-item" data-filter="category" onclick="switchFilter(this)">
+                    品类
+                    <span class="filter-nav-badge"></span>
+                </div>
+                <div class="filter-nav-item" data-filter="condition" onclick="switchFilter(this)">
+                    成色
+                    <span class="filter-nav-badge"></span>
+                </div>
+                <div class="filter-nav-item" data-filter="status" onclick="switchFilter(this)">
+                    商品状态
+                    <span class="filter-nav-badge"></span>
+                </div>
+                <div class="filter-nav-item" data-filter="warehouse" onclick="switchFilter(this)">
+                    仓库
+                    <span class="filter-nav-badge"></span>
+                </div>
+                <div class="filter-nav-item" data-filter="createTime" onclick="switchFilter(this)">
+                    创建时间
+                    <span class="filter-nav-badge"></span>
+                </div>
+                <div class="filter-nav-item" data-filter="firstFollow" onclick="switchFilter(this)">
+                    首次跟进时间
+                    <span class="filter-nav-badge"></span>
+                </div>
+                <div class="filter-nav-item" data-filter="followInterval" onclick="switchFilter(this)">
+                    跟进间隔时间
+                    <span class="filter-nav-badge"></span>
+                </div>
+                <div class="filter-nav-item" data-filter="source" onclick="switchFilter(this)">
+                    线索来源
+                    <span class="filter-nav-badge"></span>
+                </div>
+                <div class="filter-nav-item" data-filter="staff" onclick="switchFilter(this)">
+                    跟进客服
+                    <span class="filter-nav-badge"></span>
+                </div>
+                <div class="filter-nav-item" data-filter="appraiser" onclick="switchFilter(this)">
+                    鉴定师
+                    <span class="filter-nav-badge"></span>
+                </div>
+            </div>
+
+            <!-- 右侧筛选项 -->
+            <div class="filter-options">
+                <!-- 品牌筛选 -->
+                <div class="filter-section active" data-section="brand">
+                    <div class="brand-section">
+                        <div class="brand-label">推荐品牌</div>
+                        <div class="tag-list">
+                            <div class="tag-item" onclick="toggleTag(this, 'brand', 'Hermès')">Hermès</div>
+                            <div class="tag-item" onclick="toggleTag(this, 'brand', 'Chanel')">Chanel</div>
+                            <div class="tag-item" onclick="toggleTag(this, 'brand', 'LV')">Louis Vuitton</div>
+                            <div class="tag-item" onclick="toggleTag(this, 'brand', 'Dior')">Dior</div>
+                            <div class="tag-item" onclick="toggleTag(this, 'brand', 'Gucci')">Gucci</div>
+                            <div class="tag-item" onclick="toggleTag(this, 'brand', 'Prada')">Prada</div>
+                        </div>
+                        <a class="all-brands-link" onclick="openAllBrands()">查看全部品牌 ></a>
+                    </div>
+                </div>
+
+                <!-- 品类筛选 -->
+                <div class="filter-section" data-section="category">
+                    <div class="tag-list">
+                        <div class="tag-item" onclick="toggleTag(this, 'category', '手袋')">手袋</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'category', '配饰')">配饰</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'category', '鞋履')">鞋履</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'category', '服装')">服装</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'category', '腕表')">腕表</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'category', '珠宝')">珠宝</div>
+                    </div>
+                </div>
+
+                <!-- 成色筛选 -->
+                <div class="filter-section" data-section="condition">
+                    <div class="tag-list">
+                        <div class="tag-item" onclick="toggleTag(this, 'condition', '全新')">全新</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'condition', '95新')">95新</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'condition', '9成新')">9成新</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'condition', '8成新')">8成新</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'condition', '7成新')">7成新</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'condition', '6成新及以下')">6成新及以下</div>
+                    </div>
+                </div>
+
+                <!-- 商品状态筛选 -->
+                <div class="filter-section" data-section="status">
+                    <div class="tag-list">
+                        <div class="tag-item" onclick="toggleTag(this, 'status', '全部')">全部</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'status', '在库')">在库</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'status', '在售')">在售</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'status', '锁定')">锁定</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'status', '售出')">售出</div>
+                    </div>
+                </div>
+
+                <!-- 仓库筛选（单选） -->
+                <div class="filter-section" data-section="warehouse">
+                    <div class="radio-list">
+                        <div class="radio-item" onclick="toggleRadio(this, 'warehouse', '全部')">
+                            <span>全部仓库</span>
+                            <span class="radio-circle"></span>
+                        </div>
+                        <div class="radio-item" onclick="toggleRadio(this, 'warehouse', '北京仓')">
+                            <span>北京仓</span>
+                            <span class="radio-circle"></span>
+                        </div>
+                        <div class="radio-item" onclick="toggleRadio(this, 'warehouse', '上海仓')">
+                            <span>上海仓</span>
+                            <span class="radio-circle"></span>
+                        </div>
+                        <div class="radio-item" onclick="toggleRadio(this, 'warehouse', '深圳仓')">
+                            <span>深圳仓</span>
+                            <span class="radio-circle"></span>
+                        </div>
+                        <div class="radio-item" onclick="toggleRadio(this, 'warehouse', '成都仓')">
+                            <span>成都仓</span>
+                            <span class="radio-circle"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 创建时间筛选 -->
+                <div class="filter-section" data-section="createTime">
+                    <div class="filter-section-title">选择时间范围</div>
+                    <div class="time-range">
+                        <input type="date" class="time-input" id="startDate" onchange="updateTimeFilter()">
+                        <span class="time-separator">至</span>
+                        <input type="date" class="time-input" id="endDate" onchange="updateTimeFilter()">
+                    </div>
+                </div>
+
+                <!-- 首次跟进时间筛选 -->
+                <div class="filter-section" data-section="firstFollow">
+                    <div class="tag-list">
+                        <div class="tag-item" onclick="toggleTag(this, 'firstFollow', '<30分钟')"><30分钟</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'firstFollow', '<1小时')"><1小时</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'firstFollow', '1-2小时')">1-2小时</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'firstFollow', '2-6小时')">2-6小时</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'firstFollow', '6-12小时')">6-12小时</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'firstFollow', '12-24小时')">12-24小时</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'firstFollow', '>24小时')">>24小时</div>
+                    </div>
+                </div>
+
+                <!-- 跟进间隔时间筛选 -->
+                <div class="filter-section" data-section="followInterval">
+                    <div class="tag-list">
+                        <div class="tag-item" onclick="toggleTag(this, 'followInterval', '<6小时')"><6小时</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'followInterval', '6-24小时')">6-24小时</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'followInterval', '24-48小时')">24-48小时</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'followInterval', '>48小时')">>48小时</div>
+                    </div>
+                </div>
+
+                <!-- 线索来源筛选 -->
+                <div class="filter-section" data-section="source">
+                    <div class="tag-list">
+                        <div class="tag-item" onclick="toggleTag(this, 'source', '大众点评')">大众点评搜索</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'source', '小红书')">小红书咨询</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'source', '抖音')">抖音回收广告</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'source', '老客户')">老客户推荐</div>
+                        <div class="tag-item" onclick="toggleTag(this, 'source', '公海')">公海唤醒</div>
+                    </div>
+                </div>
+
+                <!-- 跟进客服筛选（带分组和搜索） -->
+                <div class="filter-section" data-section="staff">
+                    <div class="member-search">
+                        <input type="text" class="member-search-input" placeholder="搜索客服" oninput="searchMember(this, 'staff')">
+                        <span class="member-search-icon">🔍</span>
+                    </div>
+                    <div class="member-groups" id="staffGroups">
+                        <div class="member-group">
+                            <div class="member-group-title">客服1组</div>
+                            <div class="member-list">
+                                <div class="member-item" onclick="toggleMember(this, 'staff', '张小明')">
+                                    <span>张小明</span>
+                                    <span class="member-check">✓</span>
+                                </div>
+                                <div class="member-item" onclick="toggleMember(this, 'staff', '李华')">
+                                    <span>李华</span>
+                                    <span class="member-check">✓</span>
+                                </div>
+                                <div class="member-item" onclick="toggleMember(this, 'staff', '王芳')">
+                                    <span>王芳</span>
+                                    <span class="member-check">✓</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="member-group">
+                            <div class="member-group-title">客服2组</div>
+                            <div class="member-list">
+                                <div class="member-item" onclick="toggleMember(this, 'staff', '赵敏')">
+                                    <span>赵敏</span>
+                                    <span class="member-check">✓</span>
+                                </div>
+                                <div class="member-item" onclick="toggleMember(this, 'staff', '刘强')">
+                                    <span>刘强</span>
+                                    <span class="member-check">✓</span>
+                                </div>
+                                <div class="member-item" onclick="toggleMember(this, 'staff', '陈思')">
+                                    <span>陈思</span>
+                                    <span class="member-check">✓</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 鉴定师筛选（带分组和搜索） -->
+                <div class="filter-section" data-section="appraiser">
+                    <div class="member-search">
+                        <input type="text" class="member-search-input" placeholder="搜索鉴定师" oninput="searchMember(this, 'appraiser')">
+                        <span class="member-search-icon">🔍</span>
+                    </div>
+                    <div class="member-groups" id="appraiserGroups">
+                        <div class="member-group">
+                            <div class="member-group-title">鉴定师1组</div>
+                            <div class="member-list">
+                                <div class="member-item" onclick="toggleMember(this, 'appraiser', '周杰')">
+                                    <span>周杰</span>
+                                    <span class="member-check">✓</span>
+                                </div>
+                                <div class="member-item" onclick="toggleMember(this, 'appraiser', '吴彦祖')">
+                                    <span>吴彦祖</span>
+                                    <span class="member-check">✓</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="member-group">
+                            <div class="member-group-title">鉴定师2组</div>
+                            <div class="member-list">
+                                <div class="member-item" onclick="toggleMember(this, 'appraiser', '郑秀文')">
+                                    <span>郑秀文</span>
+                                    <span class="member-check">✓</span>
+                                </div>
+                                <div class="member-item" onclick="toggleMember(this, 'appraiser', '冯提莫')">
+                                    <span>冯提莫</span>
+                                    <span class="member-check">✓</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部按钮 -->
+        <div class="filter-footer">
+            <button class="reset-btn" onclick="resetFilter()">重置</button>
+            <button class="confirm-btn" onclick="confirmFilter()">确认</button>
+        </div>
+    </div>
+
+    <!-- 全部品牌二级页面 -->
+    <div class="sub-page" id="allBrandsPage">
+        <div class="sub-header">
+            <span class="back-btn" onclick="closeAllBrands()">< 返回</span>
+            <span class="sub-title">全部品牌</span>
+        </div>
+        <div class="sub-content">
+            <div class="member-search" style="margin-bottom: 15px;">
+                <input type="text" class="member-search-input" placeholder="搜索品牌" oninput="searchBrand(this)">
+                <span class="member-search-icon">🔍</span>
+            </div>
+            <div class="tag-list" id="allBrandsList">
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Hermès')">Hermès</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Chanel')">Chanel</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'LV')">Louis Vuitton</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Dior')">Dior</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Gucci')">Gucci</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Prada')">Prada</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Bottega Veneta')">Bottega Veneta</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Celine')">Celine</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Fendi')">Fendi</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Burberry')">Burberry</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Givenchy')">Givenchy</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Loewe')">Loewe</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Valentino')">Valentino</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Balenciaga')">Balenciaga</div>
+                <div class="tag-item" onclick="toggleTag(this, 'brand', 'Saint Laurent')">Saint Laurent</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 示例列表内容 -->
+    <div class="content-area">
+        <div class="list-item">
+            <h3>示例商品 1</h3>
+            <p>品牌: Hermès | 品类: 手袋 | 成色: 95新</p>
+        </div>
+        <div class="list-item">
+            <h3>示例商品 2</h3>
+            <p>品牌: Chanel | 品类: 配饰 | 成色: 全新</p>
+        </div>
+        <div class="list-item">
+            <h3>示例商品 3</h3>
+            <p>品牌: Louis Vuitton | 品类: 手袋 | 成色: 9成新</p>
+        </div>
+    </div>
+
+    <script>
+        // 筛选数据存储
+        let filterData = {
+            brand: [],
+            category: [],
+            condition: [],
+            status: [],
+            warehouse: null,
+            createTime: { start: '', end: '' },
+            firstFollow: [],
+            followInterval: [],
+            source: [],
+            staff: [],
+            appraiser: []
+        };
+
+        // 切换排序下拉
+        function toggleSort() {
+            const dropdown = document.getElementById('sortDropdown');
+            const overlay = document.getElementById('overlay');
+            dropdown.classList.toggle('show');
+            overlay.classList.toggle('show');
+        }
+
+        // 选择排序
+        function selectSort(element, type) {
+            document.querySelectorAll('.sort-option').forEach(opt => opt.classList.remove('active'));
+            element.classList.add('active');
+            closeAll();
+        }
+
+        // 打开筛选面板
+        function openFilter() {
+            const panel = document.getElementById('filterPanel');
+            const overlay = document.getElementById('overlay');
+            panel.classList.add('show');
+            overlay.classList.add('show');
+        }
+
+        // 关闭所有弹窗
+        function closeAll() {
+            document.getElementById('sortDropdown').classList.remove('show');
+            document.getElementById('filterPanel').classList.remove('show');
+            document.getElementById('overlay').classList.remove('show');
+        }
+
+        // 切换筛选导航
+        function switchFilter(element) {
+            // 更新导航激活状态
+            document.querySelectorAll('.filter-nav-item').forEach(item => item.classList.remove('active'));
+            element.classList.add('active');
+
+            // 更新内容区域
+            const filterType = element.getAttribute('data-filter');
+            document.querySelectorAll('.filter-section').forEach(section => section.classList.remove('active'));
+            document.querySelector(`[data-section="${filterType}"]`).classList.add('active');
+        }
+
+        // 切换标签选择（多选）
+        function toggleTag(element, type, value) {
+            element.classList.toggle('selected');
+
+            if (element.classList.contains('selected')) {
+                if (!filterData[type].includes(value)) {
+                    filterData[type].push(value);
+                }
+            } else {
+                filterData[type] = filterData[type].filter(item => item !== value);
+            }
+
+            updateFilterUI();
+        }
+
+        // 切换单选按钮
+        function toggleRadio(element, type, value) {
+            // 清除同组其他选项
+            element.closest('.radio-list').querySelectorAll('.radio-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+
+            // 选中当前项
+            element.classList.add('selected');
+            filterData[type] = value;
+
+            updateFilterUI();
+        }
+
+        // 切换成员选择
+        function toggleMember(element, type, value) {
+            element.classList.toggle('selected');
+
+            if (element.classList.contains('selected')) {
+                if (!filterData[type].includes(value)) {
+                    filterData[type].push(value);
+                }
+            } else {
+                filterData[type] = filterData[type].filter(item => item !== value);
+            }
+
+            updateFilterUI();
+        }
+
+        // 更新时间筛选
+        function updateTimeFilter() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            filterData.createTime = { start: startDate, end: endDate };
+            updateFilterUI();
+        }
+
+        // 更新筛选UI
+        function updateFilterUI() {
+            // 计算总选择数
+            let totalCount = 0;
+
+            // 多选类型
+            ['brand', 'category', 'condition', 'status', 'firstFollow', 'followInterval', 'source', 'staff', 'appraiser'].forEach(key => {
+                totalCount += filterData[key].length;
+            });
+
+            // 单选类型
+            if (filterData.warehouse && filterData.warehouse !== '全部') totalCount++;
+
+            // 时间范围
+            if (filterData.createTime.start || filterData.createTime.end) totalCount++;
+
+            // 更新总数显示
+            document.getElementById('filterCount').textContent = `已选 ${totalCount} 项`;
+
+            const badge = document.getElementById('filterBadge');
+            if (totalCount > 0) {
+                badge.textContent = totalCount;
+                badge.classList.add('show');
+                document.getElementById('filterBtn').classList.add('active');
+            } else {
+                badge.classList.remove('show');
+                document.getElementById('filterBtn').classList.remove('active');
+            }
+
+            // 更新导航标记
+            document.querySelectorAll('.filter-nav-item').forEach(item => {
+                const filterType = item.getAttribute('data-filter');
+                let hasSelection = false;
+
+                if (Array.isArray(filterData[filterType])) {
+                    hasSelection = filterData[filterType].length > 0;
+                } else if (filterType === 'warehouse') {
+                    hasSelection = filterData[filterType] && filterData[filterType] !== '全部';
+                } else if (filterType === 'createTime') {
+                    hasSelection = filterData[filterType].start || filterData[filterType].end;
+                }
+
+                if (hasSelection) {
+                    item.classList.add('has-selection');
+                } else {
+                    item.classList.remove('has-selection');
+                }
+            });
+
+            // 更新已选标签显示
+            updateSelectedTags();
+        }
+
+        // 更新已选标签
+        function updateSelectedTags() {
+            const container = document.getElementById('selectedTags');
+            container.innerHTML = '';
+
+            let hasSelection = false;
+
+            // 处理多选项
+            const multiSelectTypes = {
+                brand: '品牌',
+                category: '品类',
+                condition: '成色',
+                status: '状态',
+                firstFollow: '首次跟进',
+                followInterval: '跟进间隔',
+                source: '来源',
+                staff: '客服',
+                appraiser: '鉴定师'
+            };
+
+            for (let [key, label] of Object.entries(multiSelectTypes)) {
+                filterData[key].forEach(value => {
+                    hasSelection = true;
+                    const tag = document.createElement('div');
+                    tag.className = 'selected-tag';
+                    tag.innerHTML = `
+                        <span>${label}: ${value}</span>
+                        <span class="selected-tag-close" onclick="removeTag('${key}', '${value}')">✕</span>
+                    `;
+                    container.appendChild(tag);
+                });
+            }
+
+            // 处理单选项
+            if (filterData.warehouse && filterData.warehouse !== '全部') {
+                hasSelection = true;
+                const tag = document.createElement('div');
+                tag.className = 'selected-tag';
+                tag.innerHTML = `
+                    <span>仓库: ${filterData.warehouse}</span>
+                    <span class="selected-tag-close" onclick="removeWarehouse()">✕</span>
+                `;
+                container.appendChild(tag);
+            }
+
+            // 处理时间范围
+            if (filterData.createTime.start || filterData.createTime.end) {
+                hasSelection = true;
+                const tag = document.createElement('div');
+                tag.className = 'selected-tag';
+                const timeText = `${filterData.createTime.start || '始'} ~ ${filterData.createTime.end || '今'}`;
+                tag.innerHTML = `
+                    <span>创建时间: ${timeText}</span>
+                    <span class="selected-tag-close" onclick="removeTime()">✕</span>
+                `;
+                container.appendChild(tag);
+            }
+
+            container.classList.toggle('show', hasSelection);
+        }
+
+        // 移除标签
+        function removeTag(type, value) {
+            filterData[type] = filterData[type].filter(item => item !== value);
+
+            // 更新UI中的选中状态
+            document.querySelectorAll('.tag-item, .member-item').forEach(el => {
+                if (el.textContent.trim() === value || el.querySelector('span')?.textContent === value) {
+                    el.classList.remove('selected');
+                }
+            });
+
+            updateFilterUI();
+        }
+
+        // 移除仓库选择
+        function removeWarehouse() {
+            filterData.warehouse = null;
+            document.querySelectorAll('[data-section="warehouse"] .radio-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+            updateFilterUI();
+        }
+
+        // 移除时间范围
+        function removeTime() {
+            filterData.createTime = { start: '', end: '' };
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            updateFilterUI();
+        }
+
+        // 重置筛选
+        function resetFilter() {
+            filterData = {
+                brand: [],
+                category: [],
+                condition: [],
+                status: [],
+                warehouse: null,
+                createTime: { start: '', end: '' },
+                firstFollow: [],
+                followInterval: [],
+                source: [],
+                staff: [],
+                appraiser: []
+            };
+
+            // 清除所有选中状态
+            document.querySelectorAll('.tag-item, .member-item, .radio-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            // 清除时间输入
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+
+            updateFilterUI();
+        }
+
+        // 确认筛选
+        function confirmFilter() {
+            console.log('筛选条件:', filterData);
+            closeAll();
+            // 这里可以调用实际的数据筛选逻辑
+            alert('筛选已应用！查看控制台输出的筛选条件。');
+        }
+
+        // 打开全部品牌页面
+        function openAllBrands() {
+            document.getElementById('allBrandsPage').classList.add('show');
+        }
+
+        // 关闭全部品牌页面
+        function closeAllBrands() {
+            document.getElementById('allBrandsPage').classList.remove('show');
+        }
+
+        // 搜索品牌
+        function searchBrand(input) {
+            const keyword = input.value.toLowerCase();
+            const items = document.querySelectorAll('#allBrandsList .tag-item');
+
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(keyword)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // 搜索成员
+        function searchMember(input, type) {
+            const keyword = input.value.toLowerCase();
+            const container = type === 'staff' ? 'staffGroups' : 'appraiserGroups';
+            const groups = document.querySelectorAll(`#${container} .member-group`);
+
+            groups.forEach(group => {
+                const items = group.querySelectorAll('.member-item');
+                let hasVisible = false;
+
+                items.forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    if (text.includes(keyword)) {
+                        item.style.display = '';
+                        hasVisible = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+
+                // 如果组内没有可见项，隐藏组标题
+                const title = group.querySelector('.member-group-title');
+                title.style.display = hasVisible ? '' : 'none';
+            });
+        }
+
+        // 清除搜索
+        function clearSearch() {
+            document.querySelector('.search-input').value = '';
+        }
+
+        // 点击外部关闭下拉菜单
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.sort-btn') && !e.target.closest('.sort-dropdown')) {
+                document.getElementById('sortDropdown').classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html>
