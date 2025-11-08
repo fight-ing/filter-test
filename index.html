@@ -652,6 +652,24 @@
             font-size: 14px;
         }
 
+        /* 品牌已选标签(顶部) */
+        .brand-selected-tag {
+            padding: 6px 12px;
+            background: #e8f4ff;
+            border: 1px solid #007AFF;
+            color: #007AFF;
+            border-radius: 4px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .brand-selected-tag .close {
+            font-size: 14px;
+        }
+
         /* 响应式优化 */
         @media (max-height: 600px) {
             .filter-panel {
@@ -1190,16 +1208,33 @@
             <span class="back-btn" onclick="closeBrandAll()">‹</span>
             <span class="secondary-title">全部品牌</span>
         </div>
-        <div class="secondary-content">
-            <div class="member-search">
-                <input type="text" placeholder="搜索品牌名称" oninput="searchBrand(this.value)">
+        <div class="secondary-content" style="padding: 0;">
+            <!-- 已选品牌顶部显示 -->
+            <div id="brandSelectedTop" style="display: none; padding: 12px 16px; background: #f5f5f5; border-bottom: 1px solid #e5e5e5;">
+                <div style="font-size: 12px; color: #666; margin-bottom: 8px;">已选品牌</div>
+                <div id="brandSelectedTopTags" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <!-- 动态生成 -->
+                </div>
             </div>
+            
+            <!-- 搜索框 -->
+            <div class="member-search" style="padding: 16px;">
+                <input type="text" placeholder="搜索品牌名称" oninput="searchBrand(this.value)" id="brandSearchInput">
+            </div>
+            
+            <!-- 原分组列表 -->
             <div id="brandGroupList">
                 <!-- 品牌分组将通过JS动态生成 -->
             </div>
+            
+            <!-- 搜索结果 -->
+            <div id="brandSearchResult" style="display: none;">
+                <!-- 动态生成 -->
+            </div>
         </div>
         <div class="filter-footer">
-            <button class="btn btn-confirm" onclick="confirmBrandAll()">确认</button>
+            <button class="btn btn-reset" onclick="resetBrandSelect()">重置</button>
+            <button class="btn btn-confirm" onclick="confirmBrandAll()">确定</button>
         </div>
     </div>
 
@@ -1675,50 +1710,119 @@
             
             for (let letter in brandData) {
                 const groupDiv = document.createElement('div');
-                groupDiv.className = 'brand-group';
+                groupDiv.className = 'list-group';
                 
                 const letterDiv = document.createElement('div');
-                letterDiv.className = 'brand-letter';
-                letterDiv.textContent = letter;
+                letterDiv.className = 'list-group-header';
+                letterDiv.innerHTML = `<span class="arrow">▼</span><span>${letter}</span>`;
+                letterDiv.addEventListener('click', function() {
+                    this.classList.toggle('collapsed');
+                    this.nextElementSibling.classList.toggle('collapsed');
+                });
                 groupDiv.appendChild(letterDiv);
                 
-                const tagsDiv = document.createElement('div');
-                tagsDiv.className = 'option-tags';
+                const itemsDiv = document.createElement('div');
+                itemsDiv.className = 'list-group-items';
                 
                 brandData[letter].forEach(brand => {
-                    const tag = document.createElement('div');
-                    tag.className = 'tag';
-                    tag.dataset.value = brand.toLowerCase().replace(/\s+/g, '-');
-                    tag.textContent = brand;
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    const value = brand.toLowerCase().replace(/\s+/g, '-');
+                    item.dataset.value = value;
                     
                     // 检查是否已选
-                    if (filterState.brand.includes(tag.dataset.value)) {
-                        tag.classList.add('active');
+                    if (filterState.brand.includes(value)) {
+                        item.classList.add('active');
                     }
                     
-                    tag.addEventListener('click', function() {
+                    item.innerHTML = `
+                        <span>${brand}</span>
+                        <span class="check-icon">✓</span>
+                    `;
+                    
+                    item.addEventListener('click', function() {
                         this.classList.toggle('active');
-                        const value = this.dataset.value;
+                        const val = this.dataset.value;
                         
                         if (this.classList.contains('active')) {
-                            if (!filterState.brand.includes(value)) {
-                                filterState.brand.push(value);
+                            if (!filterState.brand.includes(val)) {
+                                filterState.brand.push(val);
                             }
                         } else {
-                            filterState.brand = filterState.brand.filter(v => v !== value);
+                            filterState.brand = filterState.brand.filter(v => v !== val);
                         }
+                        
+                        updateBrandSelectedTop();
                     });
                     
-                    tagsDiv.appendChild(tag);
+                    itemsDiv.appendChild(item);
                 });
                 
-                groupDiv.appendChild(tagsDiv);
+                groupDiv.appendChild(itemsDiv);
                 container.appendChild(groupDiv);
             }
         }
 
+        // 更新顶部已选品牌显示
+        function updateBrandSelectedTop() {
+            const topContainer = document.getElementById('brandSelectedTop');
+            const topTags = document.getElementById('brandSelectedTopTags');
+            
+            if (filterState.brand.length > 0) {
+                topContainer.style.display = 'block';
+                topTags.innerHTML = '';
+                
+                filterState.brand.forEach(value => {
+                    // 找到品牌名称
+                    let brandName = '';
+                    for (let letter in brandData) {
+                        const found = brandData[letter].find(b => b.toLowerCase().replace(/\s+/g, '-') === value);
+                        if (found) {
+                            brandName = found;
+                            break;
+                        }
+                    }
+                    
+                    if (!brandName) {
+                        const recommendTag = document.querySelector(`#brandRecommendTags .tag[data-value="${value}"]`);
+                        brandName = recommendTag ? recommendTag.textContent : value;
+                    }
+                    
+                    const tag = document.createElement('div');
+                    tag.className = 'brand-selected-tag';
+                    tag.innerHTML = `${brandName}<span class="close">×</span>`;
+                    tag.onclick = function() {
+                        removeBrandFromTop(value);
+                    };
+                    topTags.appendChild(tag);
+                });
+            } else {
+                topContainer.style.display = 'none';
+            }
+        }
+
+        // 从顶部移除品牌
+        function removeBrandFromTop(value) {
+            filterState.brand = filterState.brand.filter(v => v !== value);
+            updateBrandSelectedTop();
+            
+            // 同步列表中的选中状态
+            const allItems = document.querySelectorAll('#brandGroupList .list-item, #brandSearchResult .list-item');
+            allItems.forEach(item => {
+                if (item.dataset.value === value) {
+                    item.classList.remove('active');
+                }
+            });
+        }
+
         function openBrandAll() {
             initBrandList();
+            updateBrandSelectedTop();
+            // 清空搜索框并恢复原列表
+            const searchInput = document.getElementById('brandSearchInput');
+            if (searchInput) searchInput.value = '';
+            document.getElementById('brandGroupList').style.display = 'block';
+            document.getElementById('brandSearchResult').style.display = 'none';
             document.getElementById('brandAllPage').classList.add('show');
         }
 
@@ -1731,6 +1835,30 @@
             updateFilterBadge();
             updateNavDots();
             closeBrandAll();
+        }
+
+        // 重置品牌选择
+        function resetBrandSelect() {
+            // 清空选择状态
+            filterState.brand = [];
+            
+            // 清空搜索框
+            const searchInput = document.getElementById('brandSearchInput');
+            if (searchInput) searchInput.value = '';
+            
+            // 恢复原列表显示
+            document.getElementById('brandGroupList').style.display = 'block';
+            document.getElementById('brandSearchResult').style.display = 'none';
+            
+            // 移除所有active状态
+            const allItems = document.querySelectorAll('#brandGroupList .list-item, #brandSearchResult .list-item');
+            allItems.forEach(item => item.classList.remove('active'));
+            
+            // 更新显示
+            updateBrandSelectedTop();
+            updateBrandSelected();
+            updateFilterBadge();
+            updateNavDots();
         }
 
         function updateBrandSelected() {
@@ -1772,23 +1900,77 @@
         }
 
         function searchBrand(keyword) {
-            const groups = document.querySelectorAll('.brand-group');
-            groups.forEach(group => {
-                const tags = group.querySelectorAll('.tag');
-                let hasVisible = false;
-                
-                tags.forEach(tag => {
-                    const text = tag.textContent.toLowerCase();
-                    if (text.includes(keyword.toLowerCase())) {
-                        tag.style.display = 'inline-block';
-                        hasVisible = true;
-                    } else {
-                        tag.style.display = 'none';
+            const groupList = document.getElementById('brandGroupList');
+            const searchResult = document.getElementById('brandSearchResult');
+            
+            // 清空关键字时恢复原列表
+            if (!keyword || keyword.trim() === '') {
+                groupList.style.display = 'block';
+                searchResult.style.display = 'none';
+                return;
+            }
+            
+            // 隐藏原列表,显示搜索结果
+            groupList.style.display = 'none';
+            searchResult.style.display = 'block';
+            
+            // 收集所有匹配的品牌
+            const matchedBrands = [];
+            for (let letter in brandData) {
+                brandData[letter].forEach(brand => {
+                    if (brand.toLowerCase().includes(keyword.toLowerCase())) {
+                        const value = brand.toLowerCase().replace(/\s+/g, '-');
+                        matchedBrands.push({
+                            name: brand,
+                            letter: letter,
+                            value: value
+                        });
                     }
                 });
+            }
+            
+            // 生成搜索结果列表
+            if (matchedBrands.length > 0) {
+                let html = '<div class="search-result-container">';
                 
-                group.style.display = hasVisible ? 'block' : 'none';
-            });
+                matchedBrands.forEach(item => {
+                    const isSelected = filterState.brand.includes(item.value);
+                    const activeClass = isSelected ? 'active' : '';
+                    
+                    html += `
+                        <div class="list-item ${activeClass}" data-value="${item.value}" onclick="toggleBrandInSearch('${item.value}', this)">
+                            <div>
+                                <div style="font-size: 14px; color: #333;">${item.name}</div>
+                                <div style="font-size: 12px; color: #999; margin-top: 2px;">${item.letter} 组</div>
+                            </div>
+                            <span class="check-icon">✓</span>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                searchResult.innerHTML = html;
+            } else {
+                searchResult.innerHTML = '<div class="search-result-empty">未找到匹配的品牌</div>';
+            }
+        }
+
+        // 在搜索结果中切换品牌选中状态
+        function toggleBrandInSearch(value, element) {
+            element.classList.toggle('active');
+            
+            if (element.classList.contains('active')) {
+                if (!filterState.brand.includes(value)) {
+                    filterState.brand.push(value);
+                }
+            } else {
+                filterState.brand = filterState.brand.filter(v => v !== value);
+            }
+            
+            updateBrandSelectedTop();
+            updateBrandSelected();
+            updateFilterBadge();
+            updateNavDots();
         }
 
         // ========== 成员选择相关 ==========
