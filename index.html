@@ -573,6 +573,85 @@
             display: none;
         }
 
+        /* 通栏列表样式(用于二级页面) */
+        .list-item {
+            padding: 14px 16px;
+            background: #fff;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 14px;
+            color: #333;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .list-item:active {
+            background: #f5f5f5;
+        }
+
+        .list-item.active {
+            color: #007AFF;
+            background: #f0f7ff;
+        }
+
+        .list-item .check-icon {
+            color: #007AFF;
+            font-size: 18px;
+            display: none;
+        }
+
+        .list-item.active .check-icon {
+            display: block;
+        }
+
+        /* 二级页面分组容器 */
+        .list-group {
+            margin-bottom: 0;
+        }
+
+        .list-group-header {
+            padding: 12px 16px;
+            background: #f5f5f5;
+            font-size: 13px;
+            color: #666;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .list-group-header .arrow {
+            font-size: 10px;
+            margin-right: 8px;
+            transition: transform 0.3s;
+        }
+
+        .list-group-header.collapsed .arrow {
+            transform: rotate(-90deg);
+        }
+
+        .list-group-items {
+            background: #fff;
+        }
+
+        .list-group-items.collapsed {
+            display: none;
+        }
+
+        /* 搜索结果容器 */
+        .search-result-container {
+            background: #fff;
+        }
+
+        .search-result-empty {
+            padding: 40px 16px;
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+        }
+
         /* 响应式优化 */
         @media (max-height: 600px) {
             .filter-panel {
@@ -585,6 +664,17 @@
         .filter-nav::-webkit-scrollbar {
             width: 0;
             height: 0;
+        }
+
+        /* 抖动动画 */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        .shake {
+            animation: shake 0.5s ease-in-out;
         }
     </style>
 </head>
@@ -1119,15 +1209,19 @@
             <span class="back-btn" onclick="closeStaffSelect()">‹</span>
             <span class="secondary-title">选择客服</span>
         </div>
-        <div class="secondary-content">
-            <div class="member-search">
-                <input type="text" placeholder="搜索客服姓名" oninput="searchMember('staff', this.value)">
+        <div class="secondary-content" style="padding: 0;">
+            <div class="member-search" style="padding: 16px;">
+                <input type="text" placeholder="搜索客服姓名" oninput="searchMember('staff', this.value)" id="staffSearchInput">
             </div>
             <div id="staffGroupList">
                 <!-- 将通过JS动态生成 -->
             </div>
+            <div id="staffSearchResult" style="display: none;">
+                <!-- 搜索结果 -->
+            </div>
         </div>
         <div class="filter-footer">
+            <button class="btn btn-reset" onclick="resetMemberSelect('staff')">重置</button>
             <button class="btn btn-confirm" onclick="confirmStaffSelect()">确定</button>
         </div>
     </div>
@@ -1138,15 +1232,19 @@
             <span class="back-btn" onclick="closeAuthenticatorSelect()">‹</span>
             <span class="secondary-title">选择鉴定师</span>
         </div>
-        <div class="secondary-content">
-            <div class="member-search">
-                <input type="text" placeholder="搜索鉴定师姓名" oninput="searchMember('authenticator', this.value)">
+        <div class="secondary-content" style="padding: 0;">
+            <div class="member-search" style="padding: 16px;">
+                <input type="text" placeholder="搜索鉴定师姓名" oninput="searchMember('authenticator', this.value)" id="authenticatorSearchInput">
             </div>
             <div id="authenticatorGroupList">
                 <!-- 将通过JS动态生成 -->
             </div>
+            <div id="authenticatorSearchResult" style="display: none;">
+                <!-- 搜索结果 -->
+            </div>
         </div>
         <div class="filter-footer">
+            <button class="btn btn-reset" onclick="resetMemberSelect('authenticator')">重置</button>
             <button class="btn btn-confirm" onclick="confirmAuthenticatorSelect()">确定</button>
         </div>
     </div>
@@ -1157,15 +1255,19 @@
             <span class="back-btn" onclick="closeQuoterSelect()">‹</span>
             <span class="secondary-title">选择报价师</span>
         </div>
-        <div class="secondary-content">
-            <div class="member-search">
-                <input type="text" placeholder="搜索报价师姓名" oninput="searchMember('quoter', this.value)">
+        <div class="secondary-content" style="padding: 0;">
+            <div class="member-search" style="padding: 16px;">
+                <input type="text" placeholder="搜索报价师姓名" oninput="searchMember('quoter', this.value)" id="quoterSearchInput">
             </div>
             <div id="quoterGroupList">
                 <!-- 将通过JS动态生成 -->
             </div>
+            <div id="quoterSearchResult" style="display: none;">
+                <!-- 搜索结果 -->
+            </div>
         </div>
         <div class="filter-footer">
+            <button class="btn btn-reset" onclick="resetMemberSelect('quoter')">重置</button>
             <button class="btn btn-confirm" onclick="confirmQuoterSelect()">确定</button>
         </div>
     </div>
@@ -1176,16 +1278,32 @@
             <span class="back-btn" onclick="closeWarehouseSelect()">‹</span>
             <span class="secondary-title">选择仓库</span>
         </div>
-        <div class="secondary-content">
-            <div class="option-tags" id="warehouseTagList">
-                <div class="tag" data-value="hq">总部仓</div>
-                <div class="tag" data-value="east">华东仓</div>
-                <div class="tag" data-value="south">华南仓</div>
-                <div class="tag" data-value="north">华北仓</div>
-                <div class="tag" data-value="west">华西仓</div>
+        <div class="secondary-content" style="padding: 0;">
+            <div id="warehouseListItems">
+                <div class="list-item" data-value="hq">
+                    <span>总部仓</span>
+                    <span class="check-icon">✓</span>
+                </div>
+                <div class="list-item" data-value="east">
+                    <span>华东仓</span>
+                    <span class="check-icon">✓</span>
+                </div>
+                <div class="list-item" data-value="south">
+                    <span>华南仓</span>
+                    <span class="check-icon">✓</span>
+                </div>
+                <div class="list-item" data-value="north">
+                    <span>华北仓</span>
+                    <span class="check-icon">✓</span>
+                </div>
+                <div class="list-item" data-value="west">
+                    <span>华西仓</span>
+                    <span class="check-icon">✓</span>
+                </div>
             </div>
         </div>
         <div class="filter-footer">
+            <button class="btn btn-reset" onclick="resetWarehouseSelect()">重置</button>
             <button class="btn btn-confirm" onclick="confirmWarehouseSelect()">确定</button>
         </div>
     </div>
@@ -1321,9 +1439,16 @@
                         top: offsetTop,
                         behavior: 'smooth'
                     });
+                    
+                    // 滚动完成后添加抖动效果
                     setTimeout(() => {
                         isScrolling = false;
-                    }, 500);
+                        targetSection.classList.add('shake');
+                        // 动画结束后移除class
+                        setTimeout(() => {
+                            targetSection.classList.remove('shake');
+                        }, 500);
+                    }, 300);
                 }
             });
         });
@@ -1675,10 +1800,10 @@
             const groups = memberData[type];
             for (let groupName in groups) {
                 const groupDiv = document.createElement('div');
-                groupDiv.className = 'member-group';
+                groupDiv.className = 'list-group';
                 
                 const headerDiv = document.createElement('div');
-                headerDiv.className = 'group-header';
+                headerDiv.className = 'list-group-header';
                 headerDiv.innerHTML = `<span class="arrow">▼</span><span>${groupName}</span>`;
                 headerDiv.addEventListener('click', function() {
                     this.classList.toggle('collapsed');
@@ -1686,21 +1811,25 @@
                 });
                 groupDiv.appendChild(headerDiv);
                 
-                const membersDiv = document.createElement('div');
-                membersDiv.className = 'group-members';
+                const itemsDiv = document.createElement('div');
+                itemsDiv.className = 'list-group-items';
                 
                 groups[groupName].forEach(member => {
-                    const tag = document.createElement('div');
-                    tag.className = 'tag';
-                    tag.dataset.value = member;
-                    tag.textContent = member;
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    item.dataset.value = member;
                     
                     // 检查是否已选中
                     if (filterState[type] && filterState[type].includes(member)) {
-                        tag.classList.add('active');
+                        item.classList.add('active');
                     }
                     
-                    tag.addEventListener('click', function() {
+                    item.innerHTML = `
+                        <span>${member}</span>
+                        <span class="check-icon">✓</span>
+                    `;
+                    
+                    item.addEventListener('click', function() {
                         this.classList.toggle('active');
                         const value = this.dataset.value;
                         
@@ -1717,10 +1846,10 @@
                         updateNavDots();
                     });
                     
-                    membersDiv.appendChild(tag);
+                    itemsDiv.appendChild(item);
                 });
                 
-                groupDiv.appendChild(membersDiv);
+                groupDiv.appendChild(itemsDiv);
                 container.appendChild(groupDiv);
             }
         }
@@ -1774,6 +1903,10 @@
 
         function openStaffSelect() {
             initMemberList('staff');
+            // 清空搜索框并恢复原列表
+            document.getElementById('staffSearchInput').value = '';
+            document.getElementById('staffGroupList').style.display = 'block';
+            document.getElementById('staffSearchResult').style.display = 'none';
             document.getElementById('staffPage').classList.add('show');
         }
 
@@ -1790,6 +1923,10 @@
 
         function openAuthenticatorSelect() {
             initMemberList('authenticator');
+            // 清空搜索框并恢复原列表
+            document.getElementById('authenticatorSearchInput').value = '';
+            document.getElementById('authenticatorGroupList').style.display = 'block';
+            document.getElementById('authenticatorSearchResult').style.display = 'none';
             document.getElementById('authenticatorPage').classList.add('show');
         }
 
@@ -1806,6 +1943,10 @@
 
         function openQuoterSelect() {
             initMemberList('quoter');
+            // 清空搜索框并恢复原列表
+            document.getElementById('quoterSearchInput').value = '';
+            document.getElementById('quoterGroupList').style.display = 'block';
+            document.getElementById('quoterSearchResult').style.display = 'none';
             document.getElementById('quoterPage').classList.add('show');
         }
 
@@ -1820,30 +1961,104 @@
             closeQuoterSelect();
         }
 
+        // 重置成员选择
+        function resetMemberSelect(type) {
+            // 清空选择状态
+            filterState[type] = [];
+            
+            // 清空搜索框
+            const searchInput = document.getElementById(type + 'SearchInput');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            
+            // 恢复原列表显示
+            const groupList = document.getElementById(type + 'GroupList');
+            const searchResult = document.getElementById(type + 'SearchResult');
+            if (groupList) groupList.style.display = 'block';
+            if (searchResult) searchResult.style.display = 'none';
+            
+            // 移除所有active状态
+            const allItems = document.querySelectorAll(`#${type}GroupList .list-item, #${type}SearchResult .list-item`);
+            allItems.forEach(item => item.classList.remove('active'));
+            
+            // 更新显示
+            updateMemberDisplay(type);
+            updateFilterBadge();
+            updateNavDots();
+        }
+
         function searchMember(type, keyword) {
-            const groups = document.querySelectorAll(`#${type}GroupList .member-group`);
-            groups.forEach(group => {
-                const tags = group.querySelectorAll('.tag');
-                let hasVisible = false;
-                
-                tags.forEach(tag => {
-                    const text = tag.textContent.toLowerCase();
-                    if (text.includes(keyword.toLowerCase())) {
-                        tag.style.display = 'inline-block';
-                        hasVisible = true;
-                    } else {
-                        tag.style.display = 'none';
+            const groupList = document.getElementById(type + 'GroupList');
+            const searchResult = document.getElementById(type + 'SearchResult');
+            
+            // 清空关键字时恢复原列表
+            if (!keyword || keyword.trim() === '') {
+                groupList.style.display = 'block';
+                searchResult.style.display = 'none';
+                return;
+            }
+            
+            // 隐藏原列表,显示搜索结果
+            groupList.style.display = 'none';
+            searchResult.style.display = 'block';
+            
+            // 收集所有匹配的成员
+            const matchedMembers = [];
+            const groups = memberData[type];
+            
+            for (let groupName in groups) {
+                groups[groupName].forEach(member => {
+                    if (member.toLowerCase().includes(keyword.toLowerCase())) {
+                        matchedMembers.push({
+                            name: member,
+                            group: groupName
+                        });
                     }
                 });
+            }
+            
+            // 生成搜索结果列表
+            if (matchedMembers.length > 0) {
+                let html = '<div class="search-result-container">';
                 
-                if (hasVisible) {
-                    group.style.display = 'block';
-                    group.querySelector('.group-header').classList.remove('collapsed');
-                    group.querySelector('.group-members').classList.remove('collapsed');
-                } else {
-                    group.style.display = 'none';
+                matchedMembers.forEach(item => {
+                    const isSelected = filterState[type] && filterState[type].includes(item.name);
+                    const activeClass = isSelected ? 'active' : '';
+                    
+                    html += `
+                        <div class="list-item ${activeClass}" data-value="${item.name}" onclick="toggleMemberInSearch('${type}', '${item.name}', this)">
+                            <div>
+                                <div style="font-size: 14px; color: #333;">${item.name}</div>
+                                <div style="font-size: 12px; color: #999; margin-top: 2px;">${item.group}</div>
+                            </div>
+                            <span class="check-icon">✓</span>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                searchResult.innerHTML = html;
+            } else {
+                searchResult.innerHTML = '<div class="search-result-empty">未找到匹配的成员</div>';
+            }
+        }
+
+        // 在搜索结果中切换成员选中状态
+        function toggleMemberInSearch(type, member, element) {
+            element.classList.toggle('active');
+            
+            if (element.classList.contains('active')) {
+                if (!filterState[type].includes(member)) {
+                    filterState[type].push(member);
                 }
-            });
+            } else {
+                filterState[type] = filterState[type].filter(m => m !== member);
+            }
+            
+            updateMemberDisplay(type);
+            updateFilterBadge();
+            updateNavDots();
         }
 
         // ========== 仓库选择相关 ==========
@@ -1865,19 +2080,18 @@
         }
         
         function openWarehouseSelect() {
-            const page = document.getElementById('warehousePage');
-            const tags = document.querySelectorAll('#warehouseTagList .tag');
+            const items = document.querySelectorAll('#warehouseListItems .list-item');
             
             // 同步选中状态
-            tags.forEach(tag => {
-                if (filterState.warehouse === tag.dataset.value) {
-                    tag.classList.add('active');
+            items.forEach(item => {
+                if (filterState.warehouse === item.dataset.value) {
+                    item.classList.add('active');
                 } else {
-                    tag.classList.remove('active');
+                    item.classList.remove('active');
                 }
                 
                 // 添加点击事件(单选逻辑支持取消)
-                tag.onclick = function() {
+                item.onclick = function() {
                     const value = this.dataset.value;
                     
                     if (this.classList.contains('active')) {
@@ -1886,14 +2100,14 @@
                         filterState.warehouse = null;
                     } else {
                         // 选中新的
-                        tags.forEach(t => t.classList.remove('active'));
+                        items.forEach(i => i.classList.remove('active'));
                         this.classList.add('active');
                         filterState.warehouse = value;
                     }
                 };
             });
             
-            page.classList.add('show');
+            document.getElementById('warehousePage').classList.add('show');
         }
 
         function closeWarehouseSelect() {
@@ -1905,6 +2119,21 @@
             updateFilterBadge();
             updateNavDots();
             closeWarehouseSelect();
+        }
+
+        // 重置仓库选择
+        function resetWarehouseSelect() {
+            // 清空选择状态
+            filterState.warehouse = null;
+            
+            // 移除所有active状态
+            const items = document.querySelectorAll('#warehouseListItems .list-item');
+            items.forEach(item => item.classList.remove('active'));
+            
+            // 更新显示
+            updateWarehouseDisplay();
+            updateFilterBadge();
+            updateNavDots();
         }
 
         // 点击外部关闭排序下拉
